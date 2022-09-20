@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+canvas {
+    border:20px solid #d3d3d3;
+    border-style: inset;
+    background-color: #f1f1f1;
+}
+</style>
+<style type="text/css">
+    canvas {
+  background: 
+    linear-gradient(
+      hsl(200, 50%, 80%) 0%, 
+      hsl(200, 30%, 95%) 75%)
+  ;
+  display: block;
+}
+
+#ID {
+  height: 100%;
+  left: 0;
+  position: relative;
+  top: 0;
+  width: 100%;
+  background: url(https://jackrugile.com/images/misc/skyline-texture.png);
+}
+</style>
+</head>
+<body onload="startGame()">
+    <script type="text/javascript">Ysketch = Sketch.create()
+sketch.mouse.x = sketch.width / 10
+sketch.mouse.y = sketch.height
+skylines = []
+dt = 1
+
+#
+# BUILDINGS
+#
+  
+Building = ( config ) ->
+  this.reset( config )
+
+Building.prototype.reset = (config) ->
+  this.layer = config.layer
+  this.x = config.x
+  this.y = config.y
+  this.width = config.width
+  this.height = config.height
+  this.color = config.color  
+  this.slantedTop = floor( random( 0, 10 ) ) == 0
+  this.slantedTopHeight = this.width / random( 2, 4 )
+  this.slantedTopDirection = round( random( 0, 1 ) ) == 0
+  this.spireTop = floor( random( 0, 15 ) ) == 0
+  this.spireTopWidth = random( this.width * .01, this.width * .07 )
+  this.spireTopHeight = random( 10, 20 )
+  this.antennaTop = !this.spireTop && floor( random( 0, 10 ) ) == 0
+  this.antennaTopWidth = this.layer / 2
+  this.antennaTopHeight = random(5, 20) 
+    
+Building.prototype.render = ->
+  sketch.fillStyle = sketch.strokeStyle = this.color
+  sketch.lineWidth = 2
+  
+  sketch.beginPath()
+  sketch.rect( this.x, this.y, this.width, this.height )
+  sketch.fill()
+  sketch.stroke()
+    
+  if this.slantedTop
+    sketch.beginPath()
+    sketch.moveTo( this.x, this.y )
+    sketch.lineTo( this.x + this.width, this.y )
+    if this.slantedTopDirection
+      sketch.lineTo( this.x + this.width, this.y - this.slantedTopHeight )
+    else
+      sketch.lineTo( this.x, this.y - this.slantedTopHeight )
+    sketch.closePath()
+    sketch.fill()
+    sketch.stroke()
+     
+  if this.spireTop
+    sketch.beginPath()
+    sketch.moveTo( this.x + ( this.width / 2 ), this.y - this.spireTopHeight )
+    sketch.lineTo( this.x + ( this.width / 2 ) + this.spireTopWidth, this.y )
+    sketch.lineTo( this.x + ( this.width / 2 ) - this.spireTopWidth, this.y )
+    sketch.closePath()
+    sketch.fill()
+    sketch.stroke()
+   
+  if this.antennaTop
+    sketch.beginPath()
+    sketch.moveTo( this.x + ( this.width / 2 ), this.y - this.antennaTopHeight )
+    sketch.lineTo( this.x + ( this.width / 2 ), this.y )
+    sketch.lineWidth = this.antennaTopWidth
+    sketch.stroke()
+
+#
+# SKYLINES
+#
+
+Skyline = (config) -> 
+  this.x = 0
+  this.buildings = []
+  this.layer = config.layer
+  this.width =
+    min: config.width.min
+    max: config.width.max
+  this.height =
+    min: config.height.min
+    max: config.height.max
+  this.speed = config.speed
+  this.color = config.color
+  this.populate()
+  return this
+  
+Skyline.prototype.populate = ->
+  totalWidth = 0
+  while totalWidth <= sketch.width + ( this.width.max * 2 )
+    newWidth = round ( random( this.width.min, this.width.max ) )
+    newHeight = round ( random( this.height.min, this.height.max ) )
+    this.buildings.push( new Building(
+      layer: this.layer
+      x: if this.buildings.length == 0 then 0 else ( this.buildings[ this.buildings.length - 1 ].x + this.buildings[ this.buildings.length - 1 ].width )
+      y: sketch.height - newHeight
+      width: newWidth
+      height: newHeight
+      color: this.color
+    ) )
+    totalWidth += newWidth
+
+Skyline.prototype.update = ->
+  this.x -= ( sketch.mouse.x * this.speed ) * dt
+      
+  firstBuilding = this.buildings[ 0 ]
+  if firstBuilding.width + firstBuilding.x + this.x < 0
+    newWidth = round ( random( this.width.min, this.width.max ) )
+    newHeight = round ( random( this.height.min, this.height.max ) )
+    lastBuilding = this.buildings[ this.buildings.length - 1 ]    
+    firstBuilding.reset(
+      layer: this.layer
+      x: lastBuilding.x + lastBuilding.width
+      y: sketch.height - newHeight
+      width: newWidth
+      height: newHeight
+      color: this.color
+    )    
+    this.buildings.push( this.buildings.shift() )
+
+Skyline.prototype.render = ->
+  i = this.buildings.length
+  sketch.save()
+  sketch.translate( this.x, ( sketch.height - sketch.mouse.y ) / 20 * this.layer )  
+  this.buildings[ i ].render ( i ) while i--
+  sketch.restore()
+
+#
+# SETUP
+#
+  
+sketch.setup = ->    
+  i = 5
+  while i--
+    skylines.push( new Skyline(
+      layer: i + 1
+      width:
+        min: ( i + 1 ) * 30
+        max: ( i + 1 ) * 40
+      height:
+        min: 150 - ( ( i ) * 35 )
+        max: 300 - ( ( i ) * 35 )
+      speed: ( i + 1 ) * .003
+      color: 'hsl( 200, ' + ( ( ( i + 1 ) * 1 ) + 10 ) + '%, ' + ( 75 - ( i * 13 ) ) + '% )'
+    ) )
+
+#
+# CLEAR
+#
+  
+sketch.clear = ->
+  sketch.clearRect( 0, 0, sketch.width, sketch.height )
+
+#
+# UPDATE
+#
+  
+sketch.update = ->
+  dt = if sketch.dt < .1 then .1 else sketch.dt / 16
+  dt = if dt > 5 then 5 else dt
+  i = skylines.length
+  skylines[ i ].update( i ) while i--
+  
+#
+# DRAW
+#
+  
+sketch.draw = ->
+  i = skylines.length
+  skylines[ i ].render( i ) while i--
+
+#
+# Mousemove Fix
+#  
+    
+$( window ).on 'mousemove', (e) ->
+  sketch.mouse.x = e.pageX
+  sketch.mouse.y = e.page</script>
+<script>
+
+
+var myGamePiece;
+var myObstacles = [];
+var myScore;
+
+function startGame() {
+    myGamePiece = new component(30, 30, "lightcoral", 10, 120);
+    myGamePiece.gravity = 0.05;
+    myScore = new component("50px", "Consolas", "black", 580, 40, "text");
+    myGameArea.start();
+}
+
+var myGameArea = {
+    canvas : document.createElement("canvas"),
+    start : function() {
+        this.canvas.width = 900;
+        this.canvas.height = 570;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.frameNo = 0;
+        this.interval = setInterval(updateGameArea, 20);
+        },
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+}
+
+function component(width, height, color, x, y, type) {
+    this.type = type;
+    this.score = 0;
+    this.width = width;
+    this.height = height;
+    this.speedX = 0;
+    this.speedY = 0;    
+    this.x = x;
+    this.y = y;
+    this.gravity = 0;
+    this.gravitySpeed = 0;
+    this.update = function() {
+        ctx = myGameArea.context;
+        if (this.type == "text") {
+            ctx.font = this.width + " " + this.height;
+            ctx.fillStyle = color;
+            ctx.fillText(this.text, this.x, this.y);
+        } else {
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+    this.newPos = function() {
+        this.gravitySpeed += this.gravity;
+        this.x += this.speedX;
+        this.y += this.speedY + this.gravitySpeed;
+        this.hitBottom();
+    }
+    this.hitBottom = function() {
+        var rockbottom = myGameArea.canvas.height - this.height;
+        if (this.y > rockbottom) {
+            this.y = rockbottom;
+            this.gravitySpeed = 0;
+        }
+    }
+    this.crashWith = function(otherobj) {
+        var myleft = this.x;
+        var myright = this.x + (this.width);
+        var mytop = this.y;
+        var mybottom = this.y + (this.height);
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x + (otherobj.width);
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y + (otherobj.height);
+        var crash = true;
+        if ((mybottom < othertop) || (mytop > otherbottom) || (myright < otherleft) || (myleft > otherright)) {
+            crash = false;
+        }
+        return crash;
+    }
+}
+
+function updateGameArea() {
+    var x, height, gap, minHeight, maxHeight, minGap, maxGap;
+    for (i = 0; i < myObstacles.length; i += 1) {
+        if (myGamePiece.crashWith(myObstacles[i])) {
+            return;
+        } 
+    }
+    myGameArea.clear();
+    myGameArea.frameNo += 1;
+    if (myGameArea.frameNo == 1 || everyinterval(150)) {
+        x = myGameArea.canvas.width;
+        minHeight = 20;
+        maxHeight = 200;
+        height = Math.floor(Math.random()*(maxHeight-minHeight+1)+minHeight);
+        minGap = 50;
+        maxGap = 200;
+        gap = Math.floor(Math.random()*(maxGap-minGap+1)+minGap);
+        myObstacles.push(new component(10, height, "green", x, 0));
+        myObstacles.push(new component(10, x - height - gap, "green", x, height + gap));
+    }
+    for (i = 0; i < myObstacles.length; i += 1) {
+        myObstacles[i].x += -1;
+        myObstacles[i].update();
+    }
+    myScore.text="SCORE: " + myGameArea.frameNo;
+    myScore.update();
+    myGamePiece.newPos();
+    myGamePiece.update();
+}
+
+function everyinterval(n) {
+    if ((myGameArea.frameNo / n) % 1 == 0) {return true;}
+    return false;
+}
+
+function accelerate(n) {
+    myGamePiece.gravity = n;
+}
+
+</script>
+<br>
+<button onmousedown="accelerate(-0.2)" onmouseup="accelerate(0.05)"accesskey="ACCELERATE">JUMP THE DOG ARJUN</button>
+
+</body>
+</html>
