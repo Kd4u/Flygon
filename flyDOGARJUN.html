@@ -326,10 +326,18 @@ function everyinterval(n) {
 function accelerate(n) {
     myGamePiece.gravity = n;
 }
+window.addEventListener("keypress", function (evt) {
+    var SPACEBAR = 32;
+    if (evt.which === SPACEBAR) {
+        playPause();
+        evt.preventDefault();
+    }
+});
 
 </script>
 <br>
-<button onmousedown="accelerate(-0.2)" onmouseup="accelerate(0.05)"accesskey="ACCELERATE">JUMP THE DOG ARJUN</button>
-
+<button onmousedown="accelerate(-0.2)" onmouseup="accelerate(0.05)"accesskey="ACCELERATE",playPouse>JUMP THE DOG ARJUN</button>
+<p>kd
+</p>
 </body>
 </html>
